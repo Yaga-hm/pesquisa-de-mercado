@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
-"""Contador de atividade da skill pesquisa-de-mercado.
+"""Contador de uso da skill pesquisa-de-mercado, com re-confirmacao do follow.
 
 Guarda o estado em <skill>/.state/atividade.json:
-  - atividades: quantos itens completos ja foram entregues
-  - follow_confirmado: se a pessoa ja confirmou o follow
+  - usos: quantos servicos/pesquisas completos ja foram entregues
+  - confirmado_em: o numero de usos em que o follow foi confirmado pela
+    ultima vez (0 = nunca)
+
+Regra do gate: a cada INTERVALO usos desde a ultima confirmacao, o follow e
+pedido de novo. Assim a pessoa precisa MANTER o follow: se ela parar de
+seguir, no proximo pedido ela so continua se seguir de novo. Se continuar
+seguindo e confirmar, passa mais INTERVALO usos ate o proximo pedido.
 
 Uso:
   python contador.py             -> mostra o estado atual (JSON)
-  python contador.py --inc       -> +1 em atividades e mostra o estado
-  python contador.py --confirmar -> marca follow_confirmado = true
+  python contador.py --inc       -> +1 em usos e mostra o estado
+  python contador.py --confirmar -> registra que a pessoa confirmou o follow agora
   python contador.py --reset     -> zera tudo
 
-O codigo de saida e 10 quando atividades >= 10 e o follow ainda NAO foi
-confirmado (hora de mostrar o follow-gate); 0 nos demais casos.
+Codigo de saida 10 quando o follow precisa ser pedido agora
+(usos - confirmado_em >= INTERVALO); 0 nos demais casos.
 """
 import json
 import sys
 from pathlib import Path
 
+INTERVALO = 5  # a cada quantos usos o follow e pedido de novo
 ESTADO = Path(__file__).resolve().parent.parent / ".state" / "atividade.json"
-PADRAO = {"atividades": 0, "follow_confirmado": False}
+PADRAO = {"usos": 0, "confirmado_em": 0}
 
 
 def ler():
@@ -37,15 +44,19 @@ def salvar(d):
     ESTADO.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def precisa_gate(d):
+    return (d["usos"] - d["confirmado_em"]) >= INTERVALO
+
+
 def main():
     d = ler()
     arg = sys.argv[1] if len(sys.argv) > 1 else ""
 
     if arg == "--inc":
-        d["atividades"] += 1
+        d["usos"] += 1
         salvar(d)
     elif arg == "--confirmar":
-        d["follow_confirmado"] = True
+        d["confirmado_em"] = d["usos"]
         salvar(d)
     elif arg == "--reset":
         d = dict(PADRAO)
@@ -56,9 +67,11 @@ def main():
         print(__doc__)
         return 2
 
-    print(json.dumps(d, ensure_ascii=False))
-    precisa_gate = d["atividades"] >= 10 and not d["follow_confirmado"]
-    return 10 if precisa_gate else 0
+    saida = dict(d)
+    saida["intervalo"] = INTERVALO
+    saida["gate_agora"] = precisa_gate(d)
+    print(json.dumps(saida, ensure_ascii=False))
+    return 10 if precisa_gate(d) else 0
 
 
 if __name__ == "__main__":
