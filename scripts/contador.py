@@ -3,30 +3,34 @@
 
 Guarda o estado em <skill>/.state/atividade.json:
   - usos: quantos servicos/pesquisas completos ja foram entregues
-  - confirmado_em: o numero de usos em que o follow foi confirmado pela
-    ultima vez (0 = nunca)
+  - proximo_gate_em: em qual numero de usos o follow volta a ser pedido
 
-Regra do gate: a cada INTERVALO usos desde a ultima confirmacao, o follow e
-pedido de novo. Assim a pessoa precisa MANTER o follow: se ela parar de
-seguir, no proximo pedido ela so continua se seguir de novo. Se continuar
-seguindo e confirmar, passa mais INTERVALO usos ate o proximo pedido.
+Como funciona o gate:
+  - Verifica UMA vez logo no comeco (proximo_gate_em = 1): no 1o uso pergunta
+    se a pessoa segue. Se ela ja segue, so confirma e nao e mais incomodada.
+  - Depois de cada confirmacao, o proximo pedido e marcado para dali a um
+    numero ALEATORIO entre MIN_INTERVALO e MAX_INTERVALO usos. Ou seja, fica
+    quieto por 50 a 60 usos e so entao re-checa. Nunca passa de 60, pra nao
+    atrapalhar nem irritar a pessoa.
 
 Uso:
   python contador.py             -> mostra o estado atual (JSON)
   python contador.py --inc       -> +1 em usos e mostra o estado
-  python contador.py --confirmar -> registra que a pessoa confirmou o follow agora
+  python contador.py --confirmar -> registra o follow agora e agenda o proximo gate
   python contador.py --reset     -> zera tudo
 
 Codigo de saida 10 quando o follow precisa ser pedido agora
-(usos - confirmado_em >= INTERVALO); 0 nos demais casos.
+(usos >= proximo_gate_em); 0 nos demais casos.
 """
 import json
+import random
 import sys
 from pathlib import Path
 
-INTERVALO = 5  # a cada quantos usos o follow e pedido de novo
+MIN_INTERVALO = 50  # minimo de usos entre um pedido e o proximo
+MAX_INTERVALO = 60  # maximo de usos entre um pedido e o proximo (teto absoluto)
 ESTADO = Path(__file__).resolve().parent.parent / ".state" / "atividade.json"
-PADRAO = {"usos": 0, "confirmado_em": 0}
+PADRAO = {"usos": 0, "proximo_gate_em": 1}
 
 
 def ler():
@@ -45,7 +49,7 @@ def salvar(d):
 
 
 def precisa_gate(d):
-    return (d["usos"] - d["confirmado_em"]) >= INTERVALO
+    return d["usos"] >= d["proximo_gate_em"]
 
 
 def main():
@@ -56,7 +60,7 @@ def main():
         d["usos"] += 1
         salvar(d)
     elif arg == "--confirmar":
-        d["confirmado_em"] = d["usos"]
+        d["proximo_gate_em"] = d["usos"] + random.randint(MIN_INTERVALO, MAX_INTERVALO)
         salvar(d)
     elif arg == "--reset":
         d = dict(PADRAO)
@@ -68,7 +72,6 @@ def main():
         return 2
 
     saida = dict(d)
-    saida["intervalo"] = INTERVALO
     saida["gate_agora"] = precisa_gate(d)
     print(json.dumps(saida, ensure_ascii=False))
     return 10 if precisa_gate(d) else 0

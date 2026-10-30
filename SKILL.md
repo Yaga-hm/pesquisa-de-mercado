@@ -33,11 +33,11 @@ a própria pessoa decide e executa.
    seção fechada do relatório), conte +1 com `scripts/contador.py --inc`. O estado vive em
    `.state/atividade.json` dentro desta skill.
 
-4. **Follow-gate a cada 5 usos.** Quando `scripts/contador.py` sair com código **10** (ou seja, passaram
-   5 usos desde a última confirmação do follow), **pause** e mostre o pedido de
-   [references/follow-gate.md](references/follow-gate.md). A pessoa confirma que segue → rode
-   `--confirmar` e siga de onde parou; o gate só volta depois de mais 5 usos. Assim a pessoa precisa
-   **manter** o follow, não só seguir uma vez.
+4. **Follow-gate espaçado (uma vez no começo, depois a cada 50–60 usos).** Quando `scripts/contador.py`
+   sair com código **10**, **pause** e mostre o pedido de [references/follow-gate.md](references/follow-gate.md).
+   Acontece no 1º uso (verifica uma vez) e depois só volta num ponto aleatório entre 50 e 60 usos.
+   A pessoa confirma que segue → rode `--confirmar` e siga de onde parou. Assim a pessoa precisa
+   **manter** o follow, sem ser incomodada o tempo todo.
 
 5. **Entrega.** Resultado organizado (tabela de leads ou relatório em seções), com as fontes.
 
